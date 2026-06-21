@@ -32,3 +32,22 @@ export async function syncUserAfterLogin() {
     redirect("/feed");
   }
 }
+
+export async function signOut() {
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+  redirect("/");
+}
+
+export async function updateUserAvatar(avatarUrl: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("Not authenticated");
+  }
+
+  await db.update(users)
+    .set({ avatar: avatarUrl })
+    .where(eq(users.id, user.id));
+}

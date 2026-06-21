@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Search, Home, Plus, Building2, User } from "lucide-react";
+import { Search, Home, Building2, User } from "lucide-react";
 import { db } from "@/db";
 import { categories, conversations } from "@/db/schema";
 
@@ -70,18 +70,12 @@ export default async function FeedDirectory() {
             <button className="p-3 text-[#6B7280] hover:bg-gray-50 hover:text-[#111827] rounded-2xl transition-colors">
               <Search className="w-6 h-6 stroke-[2.5]" />
             </button>
-            
-            {/* Create Button (Normal) */}
-            <button className="p-3 text-[#6B7280] hover:bg-gray-50 hover:text-[#111827] rounded-2xl transition-colors">
-              <Plus className="w-6 h-6 stroke-[2.5]" />
-            </button>
-
             <button className="p-3 text-[#6B7280] hover:bg-gray-50 hover:text-[#111827] rounded-2xl transition-colors">
               <Building2 className="w-6 h-6 stroke-[2.5]" />
             </button>
-            <button className="p-3 text-[#6B7280] hover:bg-gray-50 hover:text-[#111827] rounded-2xl transition-colors">
+            <Link href="/profile" className="p-3 text-[#6B7280] hover:bg-gray-50 hover:text-[#111827] rounded-2xl transition-colors">
               <User className="w-6 h-6 stroke-[2.5]" />
-            </button>
+            </Link>
           </div>
         </nav>
 
