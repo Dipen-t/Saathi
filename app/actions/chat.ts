@@ -6,34 +6,46 @@ import { messages, participants } from "@/db/schema";
 import { revalidatePath } from "next/cache";
 
 export async function joinConversation(conversationId: number) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) {
-    throw new Error("Must be logged in to join a plan.");
+    if (!user) {
+      return { error: "Must be logged in to join a plan." };
+    }
+
+    await db.insert(participants).values({
+      conversationId,
+      userId: user.id,
+    }).onConflictDoNothing();
+
+    revalidatePath(`/chat/${conversationId}`);
+    return { success: true };
+  } catch (err: any) {
+    console.error("JOIN_ERROR", err);
+    return { error: err.message || "Failed to join conversation." };
   }
-
-  await db.insert(participants).values({
-    conversationId,
-    userId: user.id,
-  }).onConflictDoNothing();
-
-  revalidatePath(`/chat/${conversationId}`);
 }
 
 export async function sendMessage(conversationId: number, text: string) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) {
-    throw new Error("Must be logged in to send a message.");
+    if (!user) {
+      return { error: "Must be logged in to send a message." };
+    }
+
+    await db.insert(messages).values({
+      conversationId,
+      userId: user.id,
+      text,
+    });
+
+    revalidatePath(`/chat/${conversationId}`);
+    return { success: true };
+  } catch (err: any) {
+    console.error("SEND_MESSAGE_ERROR", err);
+    return { error: err.message || "Failed to send message." };
   }
-
-  await db.insert(messages).values({
-    conversationId,
-    userId: user.id,
-    text,
-  });
-
-  revalidatePath(`/chat/${conversationId}`);
 }

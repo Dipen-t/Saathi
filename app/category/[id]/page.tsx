@@ -1,18 +1,38 @@
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, MapPin, Clock, Users, Search, SlidersHorizontal, Plus } from "lucide-react";
+import { ArrowLeft, ArrowRight, MapPin, Clock, Users, Search, Plus, Sparkles } from "lucide-react";
 import { db } from "@/db";
-import { conversations } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { conversations, participants } from "@/db/schema";
+import { eq, inArray, ilike, and, or } from "drizzle-orm";
+import SearchInput from "./SearchInput";
 
-export default async function CategoryPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function CategoryPage({ params, searchParams }: { params: Promise<{ id: string }>, searchParams: Promise<{ q?: string }> }) {
   const resolvedParams = await params;
   const categoryId = resolvedParams.id;
+  const resolvedSearchParams = await searchParams;
+  const q = resolvedSearchParams.q || "";
   
   // Format the ID nicely for the header
   const categoryName = categoryId.charAt(0).toUpperCase() + categoryId.slice(1);
 
-  // Fetch real conversations from Postgres
-  const dbConversations = await db.select().from(conversations).where(eq(conversations.categoryId, categoryId));
+  // Fetch real conversations from Postgres, optionally filtered by search
+  const dbConversations = await db.select().from(conversations).where(
+    and(
+      eq(conversations.categoryId, categoryId),
+      q ? or(ilike(conversations.title, `%${q}%`), ilike(conversations.description, `%${q}%`)) : undefined
+    )
+  );
+
+  // Fetch participant counts
+  const conversationIds = dbConversations.map(c => c.id);
+  let participantCounts: Record<number, number> = {};
+
+  if (conversationIds.length > 0) {
+    const allParticipants = await db.select().from(participants).where(inArray(participants.conversationId, conversationIds));
+    participantCounts = allParticipants.reduce((acc, p) => {
+      acc[p.conversationId] = (acc[p.conversationId] || 0) + 1;
+      return acc;
+    }, {} as Record<number, number>);
+  }
 
 
   return (
@@ -38,19 +58,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
 
         {/* Search & Filter Bar */}
         <div className="px-6 pb-6 pt-2">
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input 
-                type="text" 
-                placeholder="Search conversations..." 
-                className="w-full h-12 pl-11 pr-4 bg-white rounded-full text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#4F46E5]/20 shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-all"
-              />
-            </div>
-            <button className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-[#111827] hover:bg-gray-50 transition-colors shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
-              <SlidersHorizontal className="w-4 h-4" />
-            </button>
-          </div>
+          <SearchInput />
         </div>
 
         {/* Conversations Feed */}
@@ -71,9 +79,11 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
                 className="bg-white rounded-[20px] p-5 shadow-[0px_4px_20px_rgba(0,0,0,0.03)] border border-gray-100 flex flex-col gap-3 transition-transform active:scale-[0.98] cursor-pointer group hover:shadow-[0px_8px_30px_rgba(0,0,0,0.06)]"
               >
                 <div className="flex flex-col gap-1">
-                  <h2 className="text-lg font-semibold text-[#111827] tracking-tight leading-tight">
-                    {activity.title}
-                  </h2>
+                  <div className="flex justify-between items-start gap-2">
+                    <h2 className="text-lg font-semibold text-[#111827] tracking-tight leading-tight">
+                      {activity.title}
+                    </h2>
+                  </div>
                   <p className="text-[#6B7280] text-sm leading-relaxed">
                     {activity.description}
                   </p>
@@ -83,11 +93,11 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
                 <div className="flex flex-col gap-2 mt-1">
                   <div className="flex items-center gap-2 text-[#6B7280]">
                     <Clock className="w-4 h-4 shrink-0" />
-                    <span className="text-sm font-medium">{activity.time}</span>
+                    <span className="text-sm font-medium">{activity.time || "To be decided"}</span>
                   </div>
                   <div className="flex items-center gap-2 text-[#6B7280]">
                     <MapPin className="w-4 h-4 shrink-0" />
-                    <span className="text-sm font-medium">{activity.location}</span>
+                    <span className="text-sm font-medium truncate max-w-[200px]">{activity.location || "To be decided"}</span>
                   </div>
                 </div>
 
@@ -95,7 +105,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
                 <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-50">
                   <div className="flex items-center gap-2 text-[#6B7280]">
                     <Users className="w-4 h-4" />
-                    <span className="text-sm font-semibold">0 joined</span>
+                    <span className="text-sm font-semibold">{participantCounts[activity.id] || 0} joined</span>
                   </div>
                   <div className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-50 text-[#111827] group-hover:bg-[#111827] group-hover:text-white transition-colors">
                     <ArrowRight className="w-4 h-4" />

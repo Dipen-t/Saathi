@@ -75,7 +75,11 @@ export default function ChatClient({
   const handleJoin = async () => {
     setIsJoined(true);
     startTransition(async () => {
-      await joinConversation(conversationId);
+      const res = await joinConversation(conversationId);
+      if (res?.error) {
+        alert(res.error);
+        setIsJoined(false);
+      }
     });
   };
 
@@ -98,7 +102,11 @@ export default function ChatClient({
     setOptimisticMessages(prev => [...prev, newMsg]);
 
     startTransition(async () => {
-      await sendMessage(conversationId, textToSend);
+      const res = await sendMessage(conversationId, textToSend);
+      if (res?.error) {
+        alert(res.error);
+        setOptimisticMessages(prev => prev.filter(m => m.id !== newMsg.id));
+      }
     });
   };
 

@@ -21,7 +21,8 @@ export async function syncUserAfterLogin() {
     // Insert new user into our Postgres database
     await db.insert(users).values({
       id: user.id,
-      phone: user.phone || "",
+      email: user.email || "",
+      phone: user.phone || null,
     });
     
     // Brand new user -> send to onboarding

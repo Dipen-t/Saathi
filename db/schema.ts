@@ -2,7 +2,8 @@ import { pgTable, serial, text, timestamp, integer } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
   id: text("id").primaryKey(), // Maps to Supabase Auth UID
-  phone: text("phone").notNull().unique(),
+  email: text("email"),
+  phone: text("phone"),
   name: text("name"),
   avatar: text("avatar"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

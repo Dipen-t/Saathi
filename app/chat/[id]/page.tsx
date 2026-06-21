@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, MapPin, Clock, Users } from "lucide-react";
+import { ArrowLeft, MapPin, Clock, Users, Sparkles } from "lucide-react";
 import { db } from "@/db";
 import { conversations, messages, participants, categories } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
@@ -67,26 +67,20 @@ export default async function ChatPage({ params }: { params: Promise<{ id: strin
             </div>
           </div>
 
-          {/* Meta Row (Only show if Location or Time exists) */}
-          {(conversation.location || conversation.time) && (
-            <div className="flex items-center gap-4 text-xs font-medium text-[#6B7280] bg-[#FAFAFA] p-3 rounded-xl border border-gray-100">
-              {conversation.time && (
-                <div className="flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5" />
-                  <span>{conversation.time}</span>
-                </div>
-              )}
-              {conversation.location && conversation.time && (
-                <div className="w-1 h-1 rounded-full bg-gray-300"></div>
-              )}
-              {conversation.location && (
-                <div className="flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5" />
-                  <span className="truncate max-w-[120px]">{conversation.location}</span>
-                </div>
-              )}
+          {/* Meta Row */}
+          <div className="flex items-center justify-between text-xs font-medium text-[#6B7280] bg-[#FAFAFA] p-3 rounded-xl border border-gray-100">
+            <div className="flex flex-col gap-1.5 md:flex-row md:items-center md:gap-3">
+              <div className="flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate max-w-[100px] md:max-w-none">{conversation.time || "To be decided"}</span>
+              </div>
+              <div className="hidden md:block w-1 h-1 rounded-full bg-gray-300"></div>
+              <div className="flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate max-w-[120px] md:max-w-none">{conversation.location || "To be decided"}</span>
+              </div>
             </div>
-          )}
+          </div>
         </header>
 
         {/* Interactive Chat Client */}

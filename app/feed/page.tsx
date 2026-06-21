@@ -1,11 +1,18 @@
 import Link from "next/link";
 import { Search, Home, Plus, Building2, User } from "lucide-react";
 import { db } from "@/db";
-import { categories } from "@/db/schema";
+import { categories, conversations } from "@/db/schema";
 
 export default async function FeedDirectory() {
   // Fetch real categories from the database
   const dbCategories = await db.select().from(categories);
+
+  // Fetch all conversations to get counts per category
+  const allConversations = await db.select().from(conversations);
+  const counts = allConversations.reduce((acc, conv) => {
+    acc[conv.categoryId] = (acc[conv.categoryId] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] flex justify-center font-sans pb-24 md:pb-0">
@@ -46,7 +53,7 @@ export default async function FeedDirectory() {
                     {cat.name}
                   </h2>
                   <span className="text-sm font-medium text-[#6B7280]">
-                    0 active
+                    {counts[cat.id] || 0} active
                   </span>
                 </div>
               </Link>
