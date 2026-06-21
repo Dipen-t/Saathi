@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import ProfileImageUpload from "./ProfileImageUpload";
 import { signOut } from "@/app/actions/auth";
 import Link from "next/link";
-import { Home, Search, Building2, User, LogOut, Activity, Users } from "lucide-react";
+import { Home, Search, Building2, User, LogOut, Activity, Users, Flame } from "lucide-react";
 
 export default async function ProfilePage() {
   const supabase = await createClient();
@@ -34,56 +34,64 @@ export default async function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] flex justify-center font-sans pb-24 md:pb-0">
-      <div className="w-full max-w-md bg-white min-h-screen relative flex flex-col md:border-x md:border-gray-200">
+      <div className="w-full max-w-md bg-[#FAFAFA] min-h-screen relative flex flex-col md:border-x md:border-gray-200">
         
-        {/* Profile Header (Gradient Background) */}
-        <div className="h-48 bg-gradient-to-br from-[#4F46E5] via-[#7C3AED] to-[#EC4899] relative">
-          <div className="absolute inset-0 bg-black/10 mix-blend-overlay"></div>
-        </div>
+        {/* Profile Header (Clean minimalist) */}
+        <div className="h-32 bg-[#FAFAFA] w-full"></div>
 
         {/* Profile Info Area */}
         <main className="flex-1 px-6 relative flex flex-col items-center">
           
-          {/* Avatar Upload Component (Overlapping the header) */}
-          <div className="-mt-16 mb-4">
+          {/* Avatar Upload Component */}
+          <div className="-mt-16 mb-5">
             <ProfileImageUpload currentAvatar={userProfile.avatar} userId={userProfile.id} />
           </div>
 
-          <h1 className="text-2xl font-extrabold text-[#111827] tracking-tight text-center">
-            {userProfile.name || "Anonymous User"}
-          </h1>
-          <p className="text-[#6B7280] font-medium text-sm mt-1">
-            {userProfile.email || "No email"}
-          </p>
+          <div className="flex flex-col items-center text-center w-full">
+            <h1 className="text-2xl font-bold text-[#111827] tracking-tight mb-1">
+              {userProfile.name || "Anonymous User"}
+            </h1>
+            <p className="text-[#6B7280] font-medium text-sm">
+              {userProfile.email || "No email"}
+            </p>
+            
+            {/* Karma Badge */}
+            <div className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 border border-orange-100 rounded-full">
+              <Flame className="w-4 h-4 text-orange-500 fill-orange-500" />
+              <span className="text-sm font-bold text-orange-600 tracking-wide">
+                {userProfile.karmaPoints || 0} Karma
+              </span>
+            </div>
+          </div>
 
           {/* Stats Cards */}
-          <div className="w-full grid grid-cols-2 gap-4 mt-8">
-            <div className="bg-[#FAFAFA] rounded-3xl p-5 border border-gray-100 flex flex-col items-center text-center shadow-sm">
-              <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center mb-3">
+          <div className="w-full grid grid-cols-2 gap-3 mt-8">
+            <div className="bg-white rounded-[20px] p-5 border border-gray-100 flex flex-col items-center text-center shadow-[0px_2px_8px_rgba(0,0,0,0.02)]">
+              <div className="w-10 h-10 rounded-2xl bg-gray-50 text-[#111827] flex items-center justify-center mb-3 border border-gray-100">
                 <Activity className="w-5 h-5" />
               </div>
-              <span className="text-2xl font-bold text-[#111827]">{createdCount}</span>
-              <span className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider mt-1">Created</span>
+              <span className="text-2xl font-bold text-[#111827] tracking-tight">{createdCount}</span>
+              <span className="text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mt-1">Created</span>
             </div>
             
-            <div className="bg-[#FAFAFA] rounded-3xl p-5 border border-gray-100 flex flex-col items-center text-center shadow-sm">
-              <div className="w-10 h-10 rounded-full bg-purple-50 text-purple-500 flex items-center justify-center mb-3">
+            <div className="bg-white rounded-[20px] p-5 border border-gray-100 flex flex-col items-center text-center shadow-[0px_2px_8px_rgba(0,0,0,0.02)]">
+              <div className="w-10 h-10 rounded-2xl bg-gray-50 text-[#111827] flex items-center justify-center mb-3 border border-gray-100">
                 <Users className="w-5 h-5" />
               </div>
-              <span className="text-2xl font-bold text-[#111827]">{joinedCount}</span>
-              <span className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider mt-1">Joined</span>
+              <span className="text-2xl font-bold text-[#111827] tracking-tight">{joinedCount}</span>
+              <span className="text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mt-1">Joined</span>
             </div>
           </div>
 
           {/* Actions */}
-          <div className="w-full mt-10 flex flex-col gap-3">
-            <form action={signOut}>
+          <div className="w-full mt-10 mb-8 flex flex-col">
+            <form action={signOut} className="w-full">
               <button 
                 type="submit" 
-                className="w-full h-14 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-2xl flex items-center justify-center gap-2 transition-colors border border-red-100"
+                className="w-full h-14 bg-white hover:bg-gray-50 text-[#111827] font-semibold rounded-[20px] flex items-center justify-center gap-2 transition-colors border border-gray-200 shadow-sm"
               >
-                <LogOut className="w-5 h-5" />
-                Log Out
+                <LogOut className="w-5 h-5 text-[#6B7280]" />
+                Log out
               </button>
             </form>
           </div>

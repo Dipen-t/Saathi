@@ -51,7 +51,7 @@ export default function ProfileImageUpload({ currentAvatar, userId }: { currentA
 
   return (
     <div className="relative group">
-      <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-xl bg-gray-100 flex items-center justify-center relative z-10">
+      <div className="w-32 h-32 rounded-full overflow-hidden border-[3px] border-white shadow-[0px_8px_24px_rgba(0,0,0,0.06)] bg-gray-50 flex items-center justify-center relative z-10 ring-1 ring-gray-100/50">
         {currentAvatar ? (
           <Image 
             src={currentAvatar} 
@@ -76,7 +76,7 @@ export default function ProfileImageUpload({ currentAvatar, userId }: { currentA
       <button 
         onClick={() => fileInputRef.current?.click()}
         disabled={isUploading || isPending}
-        className="absolute bottom-1 right-1 w-10 h-10 bg-[#111827] text-white rounded-full flex items-center justify-center shadow-lg hover:bg-black transition-transform active:scale-95 z-30"
+        className="absolute bottom-1 right-1 w-10 h-10 bg-white text-[#111827] rounded-full flex items-center justify-center shadow-[0px_4px_12px_rgba(0,0,0,0.1)] border border-gray-100 hover:bg-gray-50 transition-transform active:scale-95 z-30"
       >
         <Camera className="w-4 h-4" />
       </button>

@@ -6,6 +6,7 @@ export const users = pgTable("users", {
   phone: text("phone"),
   name: text("name"),
   avatar: text("avatar"),
+  karmaPoints: integer("karma_points").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
