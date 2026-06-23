@@ -22,3 +22,17 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
+
+/* Alert Modal Button Fixes (Fallback for Tailwind Watcher) */
+.btn-confirm-destructive {
+  background-color: #ef4444 !important;
+}
+.btn-confirm-destructive:hover {
+  background-color: #dc2626 !important;
+}
+.btn-confirm-primary {
+  background-color: #111827 !important;
+}
+.btn-confirm-primary:hover {
+  background-color: #000000 !important;
+}

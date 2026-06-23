@@ -16,6 +16,7 @@ export async function createConversation(formData: FormData) {
   const title = formData.get("title") as string;
   const description = formData.get("description") as string;
   const categoryId = formData.get("categoryId") as string;
+  const location = formData.get("location") as string;
 
   if (!title || !categoryId) {
     throw new Error("Title and Category are required.");
@@ -25,6 +26,7 @@ export async function createConversation(formData: FormData) {
   const [newConversation] = await db.insert(conversations).values({
     title,
     description: description || null,
+    location: location || null,
     categoryId,
     creatorId: user.id,
   }).returning({ id: conversations.id });

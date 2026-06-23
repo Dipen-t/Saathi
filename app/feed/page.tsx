@@ -1,9 +1,56 @@
 import Link from "next/link";
 import { Search, Home, Building2, User } from "lucide-react";
 import { db } from "@/db";
-import { categories, conversations } from "@/db/schema";
+import { categories, conversations, messages, participants, users } from "@/db/schema";
+import { createClient } from "@/utils/supabase/server";
+import { eq, and, gt, sql } from "drizzle-orm";
 
 export default async function FeedDirectory() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  let userName = "Guest";
+  let unreadCounts: Record<string, number> = {};
+
+  if (user) {
+    const [dbUser] = await db.select().from(users).where(eq(users.id, user.id));
+    if (dbUser) userName = dbUser.name?.split(" ")[0] || "Guest";
+
+    const userParticipants = await db
+      .select({
+        conversationId: participants.conversationId,
+        categoryId: conversations.categoryId,
+        lastReadAt: participants.lastReadAt,
+      })
+      .from(participants)
+      .innerJoin(conversations, eq(participants.conversationId, conversations.id))
+      .where(eq(participants.userId, user.id));
+
+    const unreadMessagesCount = await db
+      .select({
+        conversationId: messages.conversationId,
+        count: sql<number>`count(*)`
+      })
+      .from(messages)
+      .innerJoin(participants, and(
+        eq(messages.conversationId, participants.conversationId),
+        eq(participants.userId, user.id)
+      ))
+      .where(gt(messages.createdAt, participants.lastReadAt))
+      .groupBy(messages.conversationId);
+
+    const unreadMap = unreadMessagesCount.reduce((acc, row) => {
+      acc[row.conversationId] = Number(row.count);
+      return acc;
+    }, {} as Record<number, number>);
+
+    userParticipants.forEach(p => {
+      if (unreadMap[p.conversationId] > 0) {
+        unreadCounts[p.categoryId] = (unreadCounts[p.categoryId] || 0) + 1;
+      }
+    });
+  }
+
   // Fetch real categories from the database
   const dbCategories = await db.select().from(categories);
 
@@ -24,7 +71,7 @@ export default async function FeedDirectory() {
         <header className="px-6 pt-6 pb-6 flex items-start justify-between sticky top-0 bg-[#FAFAFA]/90 backdrop-blur-xl z-20">
           <div className="flex flex-col">
             <h1 className="text-2xl font-bold tracking-tight text-[#111827]">
-              Good evening, Dipen 👋
+              Good evening, {userName} 👋
             </h1>
             <p className="text-sm font-medium text-[#6B7280] mt-1">
               Find people to do things with.
@@ -38,26 +85,35 @@ export default async function FeedDirectory() {
         {/* Directory Grid */}
         <main className="flex-1 px-6 pb-8">
           <div className="grid grid-cols-2 gap-4">
-            {dbCategories.map((cat) => (
-              <Link 
-                key={cat.id} 
-                href={`/category/${cat.id}`}
-                className="bg-white rounded-[24px] p-5 shadow-[0px_4px_20px_rgba(0,0,0,0.03)] border border-gray-100 flex flex-col justify-between aspect-square transition-transform active:scale-[0.96] cursor-pointer hover:shadow-[0px_8px_30px_rgba(0,0,0,0.06)] group"
-              >
-                <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl bg-gray-50 border border-gray-100 group-hover:bg-gray-100 transition-colors">
-                  {cat.emoji}
-                </div>
-                
-                <div className="flex flex-col gap-1 mt-4">
-                  <h2 className="text-lg font-bold text-[#111827] tracking-tight leading-none">
-                    {cat.name}
-                  </h2>
-                  <span className="text-sm font-medium text-[#6B7280]">
-                    {counts[cat.id] || 0} active
-                  </span>
-                </div>
-              </Link>
-            ))}
+            {dbCategories.map((cat) => {
+              const unread = unreadCounts[cat.id] || 0;
+              return (
+                <Link 
+                  key={cat.id} 
+                  href={`/category/${cat.id}`}
+                  className="bg-white rounded-[24px] p-5 shadow-[0px_4px_20px_rgba(0,0,0,0.03)] border border-gray-100 flex flex-col justify-between aspect-square transition-transform active:scale-[0.96] cursor-pointer hover:shadow-[0px_8px_30px_rgba(0,0,0,0.06)] group"
+                >
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl bg-gray-50 border border-gray-100 group-hover:bg-gray-100 transition-colors">
+                    {cat.emoji}
+                  </div>
+                  
+                  <div className="flex flex-col gap-1 mt-4">
+                    <h2 className="text-lg font-bold text-[#111827] tracking-tight leading-none">
+                      {cat.name}
+                    </h2>
+                    {unread > 0 ? (
+                      <span className="text-sm font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-md inline-flex self-start mt-0.5">
+                        {unread} new
+                      </span>
+                    ) : (
+                      <span className="text-sm font-medium text-[#6B7280] mt-0.5">
+                        {counts[cat.id] || 0} active
+                      </span>
+                    )}
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         </main>
 

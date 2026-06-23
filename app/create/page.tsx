@@ -1,10 +1,129 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, Suspense, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { X, MapPin, Clock, ArrowRight, Loader2, Plus } from "lucide-react";
 import { createConversation } from "@/app/actions/conversation";
+import { getPlacePredictions } from "@/app/actions/places";
+function PlacesAutocompleteInput() {
+  const [query, setQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [selectedPlace, setSelectedPlace] = useState<{ mainText: string; fullAddress: string; secondaryText?: string } | null>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (query.trim().length > 0) {
+      const timer = setTimeout(async () => {
+        const results = await getPlacePredictions(query, coords?.lat, coords?.lng);
+        setSuggestions(results);
+        setIsOpen(true);
+      }, 300);
+      return () => clearTimeout(timer);
+    } else {
+      setSuggestions([]);
+      setIsOpen(false);
+    }
+  }, [query, coords]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleFocus = () => {
+    if (suggestions.length > 0) setIsOpen(true);
+    if (!coords && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        (err) => console.warn("Location access denied/failed:", err)
+      );
+    }
+  };
+
+  if (selectedPlace) {
+    return (
+      <div className="w-full px-6 py-5">
+        <input type="hidden" name="location" value={selectedPlace.fullAddress} />
+        <div className="flex items-center gap-3 bg-[#EEF2FF] border border-[#C7D2FE] rounded-2xl px-4 py-3 shadow-sm transition-all relative overflow-hidden group">
+          <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm">
+            <MapPin className="w-5 h-5 text-[#4F46E5]" />
+          </div>
+          <div className="flex flex-col flex-1 min-w-0">
+            <span className="text-[15px] font-bold text-[#111827] truncate leading-tight">{selectedPlace.mainText}</span>
+            {selectedPlace.secondaryText && (
+              <span className="text-xs font-medium text-[#4F46E5]/80 truncate mt-0.5">{selectedPlace.secondaryText}</span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setSelectedPlace(null)}
+            className="p-2 text-[#4F46E5] hover:bg-white rounded-full transition-colors shrink-0 opacity-80 hover:opacity-100"
+            title="Remove location"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div ref={wrapperRef} className="relative w-full">
+      <input type="hidden" name="location" value="" />
+      <input
+        type="text"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        onFocus={handleFocus}
+        placeholder="Where? (optional)"
+        className="w-full px-6 py-5 text-base font-medium text-[#111827] placeholder:text-gray-400 focus:outline-none bg-transparent"
+        autoComplete="off"
+      />
+      
+      {isOpen && suggestions.length > 0 && (
+        <div className="absolute top-full left-0 mt-1 w-[calc(100%-48px)] mx-6 bg-white border border-gray-100 rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] overflow-hidden z-50">
+          <div className="max-h-60 overflow-y-auto hide-scrollbar">
+            {suggestions.map((suggestion) => (
+              <button
+                key={suggestion.id}
+                type="button"
+                onClick={() => {
+                  const fullAddress = suggestion.mainText + (suggestion.secondaryText ? `, ${suggestion.secondaryText}` : "");
+                  setSelectedPlace({
+                    mainText: suggestion.mainText,
+                    secondaryText: suggestion.secondaryText,
+                    fullAddress
+                  });
+                  setQuery("");
+                  setIsOpen(false);
+                }}
+                className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-3 border-b border-gray-50 last:border-0 transition-colors"
+              >
+                <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center shrink-0">
+                  <MapPin className="w-4 h-4 text-[#4F46E5]" />
+                </div>
+                <div className="flex flex-col overflow-hidden">
+                  <span className="text-sm font-semibold text-[#111827] truncate">{suggestion.mainText}</span>
+                  {suggestion.secondaryText && (
+                    <span className="text-xs text-gray-500 truncate">{suggestion.secondaryText}</span>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function ConversationForm({
   loading,
@@ -38,11 +157,15 @@ function ConversationForm({
           />
           
           <hr className="border-t border-gray-200 mx-6" />
+
+          <PlacesAutocompleteInput />
+
+          <hr className="border-t border-gray-200 mx-6" />
           
           <textarea 
             name="description"
             placeholder="Any extra details? (optional)"
-            className="w-full px-6 py-6 text-base font-medium text-[#6B7280] placeholder:text-gray-400 focus:outline-none bg-transparent resize-none min-h-[120px]"
+            className="w-full px-6 py-5 text-base font-medium text-[#6B7280] placeholder:text-gray-400 focus:outline-none bg-transparent resize-none min-h-[100px]"
           />
         </div>
 
