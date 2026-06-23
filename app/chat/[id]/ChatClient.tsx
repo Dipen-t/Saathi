@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useTransition } from "react";
-import { Send } from "lucide-react";
+import { Send, CornerUpLeft, X } from "lucide-react";
 import { joinConversation, sendMessage } from "@/app/actions/chat";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
@@ -12,21 +12,28 @@ type Message = {
   text: string;
   createdAt: Date;
   senderName: string;
+  avatar?: string | null;
+  replyToId?: number | null;
 };
 
 export default function ChatClient({ 
   conversationId, 
   initialMessages, 
   hasJoined,
-  currentUserId
+  currentUserId,
+  currentUserAvatar,
+  participantMap
 }: { 
   conversationId: number, 
   initialMessages: Message[], 
   hasJoined: boolean,
-  currentUserId: string
+  currentUserId: string,
+  currentUserAvatar: string | null,
+  participantMap: Record<string, { name: string, avatar: string | null }>
 }) {
   const [isJoined, setIsJoined] = useState(hasJoined);
   const [message, setMessage] = useState("");
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [optimisticMessages, setOptimisticMessages] = useState<Message[]>(initialMessages);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isPending, startTransition] = useTransition();
@@ -45,9 +52,22 @@ export default function ChatClient({
           filter: `conversation_id=eq.${conversationId}`,
         },
         (payload) => {
-          // If message is from someone else, refresh the server component to fetch it
+          // If message is from someone else, add it optimistically
           if (payload.new.user_id !== currentUserId) {
-            router.refresh();
+            const incomingMsg: Message = {
+              id: payload.new.id,
+              userId: payload.new.user_id,
+              text: payload.new.text,
+              createdAt: new Date(payload.new.created_at),
+              senderName: participantMap[payload.new.user_id]?.name || "Member",
+              avatar: participantMap[payload.new.user_id]?.avatar || null,
+              replyToId: payload.new.reply_to_id || null,
+            };
+            setOptimisticMessages(prev => {
+              // Deduplicate just in case
+              if (prev.find(m => m.id === incomingMsg.id)) return prev;
+              return [...prev, incomingMsg];
+            });
           }
         }
       )
@@ -56,7 +76,7 @@ export default function ChatClient({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [conversationId, currentUserId, router, supabase]);
+  }, [conversationId, currentUserId, participantMap, supabase]);
 
   // Sync state if props change (revalidation)
   useEffect(() => {
@@ -97,12 +117,16 @@ export default function ChatClient({
       text: textToSend,
       createdAt: new Date(),
       senderName: "You",
+      avatar: currentUserAvatar,
+      replyToId: replyingTo?.id || null,
     };
     
+    const currentReplyToId = replyingTo?.id;
+    setReplyingTo(null);
     setOptimisticMessages(prev => [...prev, newMsg]);
 
     startTransition(async () => {
-      const res = await sendMessage(conversationId, textToSend);
+      const res = await sendMessage(conversationId, textToSend, currentReplyToId);
       if (res?.error) {
         alert(res.error);
         setOptimisticMessages(prev => prev.filter(m => m.id !== newMsg.id));
@@ -132,22 +156,44 @@ export default function ChatClient({
           </p>
         </div>
 
-        {optimisticMessages.map((msg) => (
-          <div key={msg.id} className="flex gap-4 group">
-            <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center font-bold text-[#111827] shrink-0 border border-gray-200">
-              {msg.senderName.charAt(0).toUpperCase()}
-            </div>
-            <div className="flex flex-col flex-1 pt-1">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="font-semibold text-[#111827] text-sm">{msg.senderName}</span>
-                <span className="text-xs font-medium text-gray-400">{formatTime(msg.createdAt)}</span>
+        {optimisticMessages.map((msg) => {
+          const repliedMsg = msg.replyToId ? optimisticMessages.find(m => m.id === msg.replyToId) : null;
+          return (
+            <div key={msg.id} className="flex gap-4 group">
+              {msg.avatar ? (
+                <img src={msg.avatar} alt={msg.senderName} className="w-10 h-10 rounded-full object-cover shrink-0 border border-gray-200 bg-gray-50" />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center font-bold text-[#111827] shrink-0 border border-gray-200">
+                  {msg.senderName.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <div className="flex flex-col flex-1 pt-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-semibold text-[#111827] text-sm">{msg.senderName}</span>
+                  <span className="text-xs font-medium text-gray-400">{formatTime(msg.createdAt)}</span>
+                </div>
+                {repliedMsg && (
+                  <div className="mb-1.5 pl-3 border-l-2 border-[#4F46E5] bg-gray-50 rounded-r-md py-1.5 px-3 text-xs text-[#6B7280]">
+                    <span className="font-semibold text-[#111827] block mb-0.5">{repliedMsg.senderName}</span>
+                    <span className="line-clamp-1">{repliedMsg.text}</span>
+                  </div>
+                )}
+                <div className="flex items-end gap-2">
+                  <p className="text-[#111827] text-[15px] leading-relaxed">
+                    {msg.text}
+                  </p>
+                  <button 
+                    onClick={() => setReplyingTo(msg)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 text-gray-400 hover:text-[#4F46E5] hover:bg-indigo-50 rounded-lg -mb-1"
+                    title="Reply"
+                  >
+                    <CornerUpLeft className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-              <p className="text-[#111827] text-[15px] leading-relaxed">
-                {msg.text}
-              </p>
             </div>
-          </div>
-        ))}
+          );
+        })}
         <div ref={messagesEndRef} />
       </main>
 
@@ -167,25 +213,42 @@ export default function ChatClient({
             </button>
           </div>
         ) : (
-          <form onSubmit={handleSend} className="flex items-center gap-3">
-            <div className="flex-1 relative">
-                <input
-                  type="text"
-                  placeholder="Type a message..."
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  className="w-full h-14 pl-5 pr-12 bg-gray-100 rounded-2xl text-[15px] focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#4F46E5]/20 shadow-inner transition-all"
-                  autoFocus
-                />
-            </div>
-            <button 
-              type="submit"
-              disabled={!message.trim() || isPending}
-              className="w-14 h-14 bg-[#111827] hover:bg-black disabled:bg-gray-100 disabled:text-gray-400 text-white rounded-2xl flex items-center justify-center transition-transform active:scale-95 shrink-0"
-            >
-              <Send className="w-5 h-5 ml-1" />
-            </button>
-          </form>
+          <div className="flex flex-col">
+            {replyingTo && (
+              <div className="flex items-center justify-between bg-gray-50 px-4 py-2 rounded-t-2xl border-x border-t border-gray-100 -mb-2 pb-3 mx-1">
+                <div className="flex flex-col text-xs pr-4">
+                  <span className="font-semibold text-[#4F46E5] mb-0.5">Replying to {replyingTo.senderName}</span>
+                  <span className="text-gray-500 line-clamp-1">{replyingTo.text}</span>
+                </div>
+                <button 
+                  type="button" 
+                  onClick={() => setReplyingTo(null)}
+                  className="p-1 hover:bg-gray-200 rounded-full text-gray-400 transition-colors shrink-0"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+            <form onSubmit={handleSend} className="flex items-center gap-3 relative z-10">
+              <div className="flex-1 relative">
+                  <input
+                    type="text"
+                    placeholder="Type a message..."
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    className="w-full h-14 pl-5 pr-12 bg-gray-100 rounded-2xl text-[15px] focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#4F46E5]/20 shadow-inner transition-all"
+                    autoFocus
+                  />
+              </div>
+              <button 
+                type="submit"
+                disabled={!message.trim() || isPending}
+                className="w-14 h-14 bg-[#111827] hover:bg-black disabled:bg-gray-100 disabled:text-gray-400 text-white rounded-2xl flex items-center justify-center transition-transform active:scale-95 shrink-0 shadow-sm"
+              >
+                <Send className="w-5 h-5 ml-1" />
+              </button>
+            </form>
+          </div>
         )}
       </div>
     </>

@@ -39,5 +39,6 @@ export const messages = pgTable("messages", {
   conversationId: integer("conversation_id").references(() => conversations.id).notNull(),
   userId: text("user_id").references(() => users.id).notNull(),
   text: text("text").notNull(),
+  replyToId: integer("reply_to_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

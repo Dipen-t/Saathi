@@ -27,7 +27,7 @@ export async function joinConversation(conversationId: number) {
   }
 }
 
-export async function sendMessage(conversationId: number, text: string) {
+export async function sendMessage(conversationId: number, text: string, replyToId?: number) {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -40,6 +40,7 @@ export async function sendMessage(conversationId: number, text: string) {
       conversationId,
       userId: user.id,
       text,
+      replyToId: replyToId || null,
     });
 
     revalidatePath(`/chat/${conversationId}`);
